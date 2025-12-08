@@ -8,6 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { BeachCard } from '@/components/beach/BeachCard';
 import { beaches } from '@/data/mockBeaches';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import {
   User,
   Star,
@@ -18,16 +20,20 @@ import {
   LogOut,
   Mail,
   Lock,
+  UserPlus,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type TabType = 'favorites' | 'notifications' | 'history' | 'settings';
+type AuthMode = 'login' | 'signup';
 
 const Profile = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, loading, signIn, signUp, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('favorites');
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Mock data
   const favoriteIds = ['1', '3', '5'];
@@ -40,12 +46,53 @@ const Profile = () => {
     weather: false,
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login
-    if (email && password) {
-      setIsLoggedIn(true);
+    
+    if (!email || !password) {
+      toast.error('Preencha todos os campos');
+      return;
     }
+
+    if (password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (authMode === 'login') {
+        const { error } = await signIn(email, password);
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('Email ou senha incorretos');
+          } else {
+            toast.error(error.message);
+          }
+        } else {
+          toast.success('Login realizado com sucesso!');
+        }
+      } else {
+        const { error } = await signUp(email, password, displayName);
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast.error('Este email já está cadastrado');
+          } else {
+            toast.error(error.message);
+          }
+        } else {
+          toast.success('Conta criada com sucesso!');
+        }
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Você saiu da sua conta');
   };
 
   const tabs = [
@@ -55,7 +102,17 @@ const Profile = () => {
     { id: 'settings' as TabType, icon: Settings, label: 'Config' },
   ];
 
-  if (!isLoggedIn) {
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!user) {
     return (
       <AppLayout>
         <div className="p-4 max-w-md mx-auto">
@@ -67,20 +124,46 @@ const Profile = () => {
               Bem-vindo ao Orla
             </h1>
             <p className="text-muted-foreground mb-6">
-              Faça login para salvar suas praias favoritas e receber alertas
-              personalizados.
+              {authMode === 'login' 
+                ? 'Faça login para salvar suas praias favoritas e receber alertas personalizados.'
+                : 'Crie sua conta para curtir praias e receber alertas personalizados.'}
             </p>
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <LogIn className="w-5 h-5" />
-                Entrar
+                {authMode === 'login' ? (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    Entrar
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5" />
+                    Criar Conta
+                  </>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {authMode === 'signup' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Nome</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="displayName"
+                        type="text"
+                        placeholder="Seu nome"
+                        className="pl-10"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -109,21 +192,35 @@ const Profile = () => {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full">
-                  Entrar
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? 'Aguarde...' : (authMode === 'login' ? 'Entrar' : 'Criar Conta')}
                 </Button>
               </form>
 
               <Separator className="my-4" />
 
               <p className="text-center text-sm text-muted-foreground">
-                Não tem conta?{' '}
-                <button
-                  className="text-primary font-medium hover:underline"
-                  onClick={() => setIsLoggedIn(true)}
-                >
-                  Criar conta
-                </button>
+                {authMode === 'login' ? (
+                  <>
+                    Não tem conta?{' '}
+                    <button
+                      className="text-primary font-medium hover:underline"
+                      onClick={() => setAuthMode('signup')}
+                    >
+                      Criar conta
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Já tem conta?{' '}
+                    <button
+                      className="text-primary font-medium hover:underline"
+                      onClick={() => setAuthMode('login')}
+                    >
+                      Fazer login
+                    </button>
+                  </>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -135,7 +232,7 @@ const Profile = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <Star className="w-4 h-4 text-status-warning" />
-                Salve suas praias favoritas
+                Curta suas praias favoritas
               </li>
               <li className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-primary" />
@@ -161,8 +258,10 @@ const Profile = () => {
             <User className="w-8 h-8 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">João Silva</h1>
-            <p className="text-sm text-muted-foreground">joao@email.com</p>
+            <h1 className="text-xl font-bold text-foreground">
+              {user.user_metadata?.display_name || user.email?.split('@')[0]}
+            </h1>
+            <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </div>
 
@@ -272,7 +371,7 @@ const Profile = () => {
                 <Button
                   variant="destructive"
                   className="w-full"
-                  onClick={() => setIsLoggedIn(false)}
+                  onClick={handleSignOut}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair da Conta

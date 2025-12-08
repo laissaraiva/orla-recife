@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { EmergencyButton } from '@/components/map/EmergencyButton';
 import { BeachDetailsPanel } from '@/components/map/BeachDetailsPanel';
+import { useBeachLikes } from '@/hooks/useBeachLikes';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoicGhzcDIiLCJhIjoiY21pdnpydWloMXVuaDNkcTJoMTBiaXNjdSJ9.VgPr50l5WyLY7zE-_-NlLg';
 
@@ -26,8 +27,9 @@ const MapView = () => {
   } | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [selectedBeach, setSelectedBeach] = useState<Beach | null>(null);
-  const [favorites, setFavorites] = useState<string[]>(['1', '3']);
   const [mapLoaded, setMapLoaded] = useState(false);
+  
+  const { getLikeData, toggleLike } = useBeachLikes();
 
   const getStatusMarkerColor = (status: Beach['status']) => {
     switch (status) {
@@ -111,13 +113,6 @@ const MapView = () => {
       })
     : beaches;
 
-  const toggleFavorite = (beachId: string) => {
-    setFavorites((prev) =>
-      prev.includes(beachId)
-        ? prev.filter((id) => id !== beachId)
-        : [...prev, beachId]
-    );
-  };
 
   // Initialize map - focused on Recife beaches
   useEffect(() => {
@@ -355,8 +350,9 @@ const MapView = () => {
                   )
                 : undefined
             }
-            isFavorite={favorites.includes(selectedBeach.id)}
-            onToggleFavorite={toggleFavorite}
+            likeCount={getLikeData(selectedBeach.id).count}
+            userLiked={getLikeData(selectedBeach.id).userLiked}
+            onToggleLike={toggleLike}
             onClose={() => setSelectedBeach(null)}
           />
         ) : (

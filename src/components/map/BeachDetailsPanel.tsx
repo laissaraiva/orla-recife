@@ -7,16 +7,18 @@ import { cn } from '@/lib/utils';
 interface BeachDetailsPanelProps {
   beach: Beach;
   distance?: number;
-  isFavorite: boolean;
-  onToggleFavorite: (id: string) => void;
+  likeCount: number;
+  userLiked: boolean;
+  onToggleLike: (id: string) => void;
   onClose: () => void;
 }
 
 export const BeachDetailsPanel = ({
   beach,
   distance,
-  isFavorite,
-  onToggleFavorite,
+  likeCount,
+  userLiked,
+  onToggleLike,
   onClose,
 }: BeachDetailsPanelProps) => {
   return (
@@ -44,16 +46,22 @@ export const BeachDetailsPanel = ({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="icon"
-            onClick={() => onToggleFavorite(beach.id)}
-            className="shrink-0"
+            size="sm"
+            onClick={() => onToggleLike(beach.id)}
+            className="shrink-0 flex items-center gap-1 px-2"
           >
             <Heart
               className={cn(
-                'w-5 h-5 transition-colors',
-                isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
+                'w-5 h-5 transition-all',
+                userLiked ? 'fill-red-500 text-red-500 scale-110' : 'text-muted-foreground hover:text-red-400'
               )}
             />
+            <span className={cn(
+              'text-sm font-medium',
+              userLiked ? 'text-red-500' : 'text-muted-foreground'
+            )}>
+              {likeCount}
+            </span>
           </Button>
           <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
             <X className="w-5 h-5" />
