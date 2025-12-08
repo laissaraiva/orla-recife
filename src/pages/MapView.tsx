@@ -131,7 +131,7 @@ const MapView = () => {
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [-34.8870, -8.1100], // Centro das praias de Recife
       zoom: 13.5,
       minZoom: 12,
