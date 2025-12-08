@@ -1,14 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { BeachCard } from '@/components/beach/BeachCard';
-import { beaches, Beach, getStatusColor } from '@/data/mockBeaches';
-import { MapPin, Navigation, Loader2 } from 'lucide-react';
+import { beaches, Beach, lifeguardPosts, getStatusColor } from '@/data/mockBeaches';
+import { Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { EmergencyButton } from '@/components/map/EmergencyButton';
+import { BeachDetailsPanel } from '@/components/map/BeachDetailsPanel';
+
+mapboxgl.accessToken = 'pk.eyJ1IjoicGhzcDIiLCJhIjoiY21pdnpydWloMXVuaDNkcTJoMTBiaXNjdSJ9.VgPr50l5WyLY7zE-_-NlLg';
 
 const MapView = () => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
+  const beachMarkers = useRef<mapboxgl.Marker[]>([]);
+  const lifeguardMarkers = useRef<mapboxgl.Marker[]>([]);
+
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -16,34 +27,52 @@ const MapView = () => {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [selectedBeach, setSelectedBeach] = useState<Beach | null>(null);
   const [favorites, setFavorites] = useState<string[]>(['1', '3']);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  const getStatusMarkerColor = (status: Beach['status']) => {
+    switch (status) {
+      case 'safe':
+        return '#22c55e';
+      case 'warning':
+        return '#eab308';
+      case 'danger':
+        return '#ef4444';
+    }
+  };
 
   const getUserLocation = () => {
     setLoadingLocation(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const coords = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setUserLocation(coords);
           setLoadingLocation(false);
+          
+          if (map.current) {
+            map.current.flyTo({
+              center: [coords.lng, coords.lat],
+              zoom: 14,
+              duration: 1500,
+            });
+          }
         },
         (error) => {
           console.error('Error getting location:', error);
-          // Fallback to Recife center
-          setUserLocation({ lat: -8.0578, lng: -34.8829 });
+          const fallback = { lat: -8.1193, lng: -34.8953 };
+          setUserLocation(fallback);
           setLoadingLocation(false);
         }
       );
     } else {
-      setUserLocation({ lat: -8.0578, lng: -34.8829 });
+      const fallback = { lat: -8.1193, lng: -34.8953 };
+      setUserLocation(fallback);
       setLoadingLocation(false);
     }
   };
-
-  useEffect(() => {
-    getUserLocation();
-  }, []);
 
   const calculateDistance = (
     lat1: number,
@@ -90,78 +119,177 @@ const MapView = () => {
     );
   };
 
-  const getStatusMarkerColor = (status: Beach['status']) => {
-    switch (status) {
-      case 'safe':
-        return 'bg-status-safe';
-      case 'warning':
-        return 'bg-status-warning';
-      case 'danger':
-        return 'bg-status-danger';
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [-34.8953, -8.1193], // Recife center
+      zoom: 12,
+    });
+
+    map.current.addControl(
+      new mapboxgl.NavigationControl({ visualizePitch: false }),
+      'top-right'
+    );
+
+    map.current.on('load', () => {
+      setMapLoaded(true);
+    });
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, []);
+
+  // Add beach markers
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    // Clear existing markers
+    beachMarkers.current.forEach(marker => marker.remove());
+    beachMarkers.current = [];
+
+    beaches.forEach((beach) => {
+      // Create wave icon marker
+      const el = document.createElement('div');
+      el.className = 'beach-marker';
+      el.innerHTML = `
+        <div style="
+          width: 40px;
+          height: 40px;
+          background-color: ${getStatusMarkerColor(beach.status)};
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.2s;
+          font-size: 20px;
+        ">
+          🌊
+        </div>
+      `;
+      
+      el.addEventListener('mouseenter', () => {
+        el.querySelector('div')!.style.transform = 'scale(1.2)';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.querySelector('div')!.style.transform = 'scale(1)';
+      });
+      el.addEventListener('click', () => {
+        setSelectedBeach(beach);
+        map.current?.flyTo({
+          center: [beach.coordinates.lng, beach.coordinates.lat],
+          zoom: 14,
+          duration: 1000,
+        });
+      });
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([beach.coordinates.lng, beach.coordinates.lat])
+        .addTo(map.current!);
+
+      beachMarkers.current.push(marker);
+    });
+  }, [mapLoaded]);
+
+  // Add lifeguard markers
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    lifeguardMarkers.current.forEach(marker => marker.remove());
+    lifeguardMarkers.current = [];
+
+    lifeguardPosts.forEach((post) => {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="
+          width: 32px;
+          height: 32px;
+          background-color: ${post.active ? '#3b82f6' : '#9ca3af'};
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+        ">
+          🏊
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 8px;">
+          <strong>${post.name}</strong>
+          <p style="margin: 4px 0 0; color: ${post.active ? 'green' : 'gray'};">
+            ${post.active ? '✓ Ativo' : '✗ Inativo'}
+          </p>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([post.coordinates.lng, post.coordinates.lat])
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      lifeguardMarkers.current.push(marker);
+    });
+  }, [mapLoaded]);
+
+  // Update user location marker
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !userLocation) return;
+
+    if (userMarker.current) {
+      userMarker.current.setLngLat([userLocation.lng, userLocation.lat]);
+    } else {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="
+          width: 20px;
+          height: 20px;
+          background-color: #2563eb;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.3);
+        "></div>
+      `;
+
+      userMarker.current = new mapboxgl.Marker({ element: el })
+        .setLngLat([userLocation.lng, userLocation.lat])
+        .addTo(map.current);
     }
-  };
+  }, [userLocation, mapLoaded]);
+
+  // Get user location on mount
+  useEffect(() => {
+    getUserLocation();
+  }, []);
 
   return (
     <AppLayout>
       <div className="flex flex-col h-[calc(100vh-7.5rem)]">
-        {/* Map Placeholder */}
-        <div className="relative flex-1 bg-ocean-light/20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-beach opacity-50" />
+        {/* Map Container */}
+        <div className="relative flex-1">
+          <div ref={mapContainer} className="absolute inset-0" />
 
-          {/* Map visualization placeholder */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-full h-full">
-              {/* Beach markers */}
-              {beaches.map((beach, index) => {
-                // Calculate position based on coordinates (simplified for demo)
-                const top = 10 + (index % 4) * 20;
-                const left = 15 + (index % 3) * 25;
-
-                return (
-                  <button
-                    key={beach.id}
-                    className={cn(
-                      'absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-200',
-                      selectedBeach?.id === beach.id && 'scale-125 z-10'
-                    )}
-                    style={{ top: `${top}%`, left: `${left}%` }}
-                    onClick={() => setSelectedBeach(beach)}
-                  >
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white',
-                        getStatusMarkerColor(beach.status)
-                      )}
-                    >
-                      <MapPin className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium text-foreground bg-card/90 px-2 py-0.5 rounded whitespace-nowrap">
-                      {beach.name.replace('Praia de ', '').replace('Praia do ', '')}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {/* User location marker */}
-              {userLocation && (
-                <div
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
-                  style={{ top: '45%', left: '50%' }}
-                >
-                  <div className="relative">
-                    <div className="w-4 h-4 bg-primary rounded-full border-2 border-white shadow-lg" />
-                    <div className="absolute inset-0 bg-primary/30 rounded-full animate-ping" />
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Emergency Button */}
+          <div className="absolute top-4 right-16 z-10">
+            <EmergencyButton />
           </div>
 
           {/* Location button */}
           <Button
             variant="secondary"
             size="icon"
-            className="absolute bottom-4 right-4 shadow-lg"
+            className="absolute bottom-4 right-4 shadow-lg z-10"
             onClick={getUserLocation}
             disabled={loadingLocation}
           >
@@ -173,21 +301,28 @@ const MapView = () => {
           </Button>
 
           {/* Legend */}
-          <Card className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm">
+          <Card className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm z-10">
             <CardContent className="p-3">
               <p className="text-xs font-medium text-foreground mb-2">Legenda</p>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
+                  <span>🌊</span>
                   <div className="w-3 h-3 rounded-full bg-status-safe" />
                   <span className="text-xs text-muted-foreground">Própria</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span>🌊</span>
                   <div className="w-3 h-3 rounded-full bg-status-warning" />
                   <span className="text-xs text-muted-foreground">Atenção</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span>🌊</span>
                   <div className="w-3 h-3 rounded-full bg-status-danger" />
                   <span className="text-xs text-muted-foreground">Imprópria</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-border">
+                  <span>🏊</span>
+                  <span className="text-xs text-muted-foreground">Salva-vidas</span>
                 </div>
               </div>
             </CardContent>
@@ -196,25 +331,22 @@ const MapView = () => {
 
         {/* Beach Details Panel */}
         {selectedBeach ? (
-          <div className="bg-card border-t border-border p-4 animate-in slide-in-from-bottom duration-300">
-            <BeachCard
-              beach={selectedBeach}
-              isFavorite={favorites.includes(selectedBeach.id)}
-              onToggleFavorite={toggleFavorite}
-            />
-            {userLocation && (
-              <p className="text-sm text-muted-foreground mt-2 text-center">
-                ~{' '}
-                {calculateDistance(
-                  userLocation.lat,
-                  userLocation.lng,
-                  selectedBeach.coordinates.lat,
-                  selectedBeach.coordinates.lng
-                ).toFixed(1)}{' '}
-                km de distância
-              </p>
-            )}
-          </div>
+          <BeachDetailsPanel
+            beach={selectedBeach}
+            distance={
+              userLocation
+                ? calculateDistance(
+                    userLocation.lat,
+                    userLocation.lng,
+                    selectedBeach.coordinates.lat,
+                    selectedBeach.coordinates.lng
+                  )
+                : undefined
+            }
+            isFavorite={favorites.includes(selectedBeach.id)}
+            onToggleFavorite={toggleFavorite}
+            onClose={() => setSelectedBeach(null)}
+          />
         ) : (
           <div className="bg-card border-t border-border p-4">
             <h3 className="font-semibold text-foreground mb-3">
@@ -225,7 +357,14 @@ const MapView = () => {
                 <div
                   key={beach.id}
                   className="shrink-0 w-40"
-                  onClick={() => setSelectedBeach(beach)}
+                  onClick={() => {
+                    setSelectedBeach(beach);
+                    map.current?.flyTo({
+                      center: [beach.coordinates.lng, beach.coordinates.lat],
+                      zoom: 14,
+                      duration: 1000,
+                    });
+                  }}
                 >
                   <Card className="cursor-pointer hover:shadow-soft transition-shadow">
                     <CardContent className="p-3">
@@ -236,10 +375,10 @@ const MapView = () => {
                         )}
                       >
                         {beach.status === 'safe'
-                          ? 'OK'
+                          ? '🌊 OK'
                           : beach.status === 'warning'
-                          ? '!'
-                          : 'X'}
+                          ? '🌊 !'
+                          : '🌊 X'}
                       </Badge>
                       <p className="font-medium text-sm text-foreground truncate">
                         {beach.name.replace('Praia de ', '').replace('Praia do ', '')}
