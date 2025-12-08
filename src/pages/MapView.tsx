@@ -119,15 +119,27 @@ const MapView = () => {
     );
   };
 
-  // Initialize map
+  // Initialize map - focused on Recife beaches
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+
+    // Bounds for Recife beaches area
+    const recifeBounds: [[number, number], [number, number]] = [
+      [-34.9150, -8.1450], // Southwest
+      [-34.8650, -8.0750], // Northeast
+    ];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [-34.8953, -8.1193], // Recife center
-      zoom: 12,
+      center: [-34.8870, -8.1100], // Centro das praias de Recife
+      zoom: 13.5,
+      minZoom: 12,
+      maxZoom: 16,
+      maxBounds: [
+        [-34.95, -8.18], // Southwest
+        [-34.84, -8.05], // Northeast
+      ],
     });
 
     map.current.addControl(
