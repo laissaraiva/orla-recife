@@ -143,6 +143,21 @@ const MapView = () => {
     );
 
     map.current.on('load', () => {
+      // Remove POI labels (commercial, tourist points) - keep only our custom markers
+      const layersToHide = [
+        'poi-label',
+        'transit-label',
+        'airport-label',
+        'settlement-subdivision-label',
+        'natural-point-label'
+      ];
+      
+      layersToHide.forEach(layerId => {
+        if (map.current?.getLayer(layerId)) {
+          map.current.setLayoutProperty(layerId, 'visibility', 'none');
+        }
+      });
+      
       setMapLoaded(true);
     });
 
