@@ -1,11 +1,23 @@
-import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { beaches } from '@/data/mockBeaches';
+import { useBeaches } from '@/hooks/useBeaches';
 
 export const BeachStatusSummary = () => {
+  const { beaches, loading } = useBeaches();
+  
   const safeCount = beaches.filter((b) => b.status === 'safe').length;
   const warningCount = beaches.filter((b) => b.status === 'warning').length;
   const dangerCount = beaches.filter((b) => b.status === 'danger').length;
+
+  if (loading) {
+    return (
+      <Card className="bg-gradient-ocean text-primary-foreground border-0 shadow-soft overflow-hidden">
+        <CardContent className="p-4 flex items-center justify-center h-32">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-gradient-ocean text-primary-foreground border-0 shadow-soft overflow-hidden">

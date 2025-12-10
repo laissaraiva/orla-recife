@@ -2,7 +2,7 @@ import { MapPin, Clock, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Beach, getStatusLabel, getStatusColor } from '@/data/mockBeaches';
+import { Beach, getStatusLabel, getStatusColor } from '@/hooks/useBeaches';
 import { cn } from '@/lib/utils';
 
 interface BeachCardProps {

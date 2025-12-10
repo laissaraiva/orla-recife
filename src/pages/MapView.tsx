@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { beaches, Beach, lifeguardPosts, getStatusColor } from '@/data/mockBeaches';
+import { lifeguardPosts } from '@/data/mockBeaches';
+import { useBeaches, Beach, getStatusColor } from '@/hooks/useBeaches';
 import { Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +22,8 @@ const MapView = () => {
   const beachMarkers = useRef<mapboxgl.Marker[]>([]);
   const lifeguardMarkers = useRef<mapboxgl.Marker[]>([]);
 
+  const { beaches, loading: beachesLoading } = useBeaches();
+  
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -169,7 +172,7 @@ const MapView = () => {
 
   // Add beach markers
   useEffect(() => {
-    if (!map.current || !mapLoaded) return;
+    if (!map.current || !mapLoaded || beaches.length === 0) return;
 
     // Clear existing markers
     beachMarkers.current.forEach(marker => marker.remove());
@@ -219,7 +222,7 @@ const MapView = () => {
 
       beachMarkers.current.push(marker);
     });
-  }, [mapLoaded]);
+  }, [mapLoaded, beaches]);
 
   // Add lifeguard markers
   useEffect(() => {

@@ -1,11 +1,45 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { beaches, getStatusLabel } from '@/data/mockBeaches';
 import { toast } from 'sonner';
+
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'safe':
+      return 'Própria para banho';
+    case 'warning':
+      return 'Atenção';
+    case 'danger':
+      return 'Imprópria para banho';
+    default:
+      return status;
+  }
+};
 
 export const useBeachNotifications = () => {
   const { user } = useAuth();
+  const [likedBeachIds, setLikedBeachIds] = useState<string[]>([]);
+
+  // Fetch user's liked beaches
+  useEffect(() => {
+    if (!user) {
+      setLikedBeachIds([]);
+      return;
+    }
+
+    const fetchLikedBeaches = async () => {
+      const { data } = await supabase
+        .from('beach_likes')
+        .select('beach_id')
+        .eq('user_id', user.id);
+      
+      if (data) {
+        setLikedBeachIds(data.map(like => like.beach_id));
+      }
+    };
+
+    fetchLikedBeaches();
+  }, [user]);
 
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
@@ -32,7 +66,7 @@ export const useBeachNotifications = () => {
   const sendNotification = useCallback((beachName: string, oldStatus: string, newStatus: string) => {
     if (Notification.permission === 'granted') {
       const notification = new Notification(`🌊 ${beachName}`, {
-        body: `Status mudou de "${oldStatus}" para "${newStatus}"`,
+        body: `Status mudou de "${getStatusLabel(oldStatus)}" para "${getStatusLabel(newStatus)}"`,
         icon: '/favicon.ico',
         tag: `beach-${beachName}`,
         requireInteraction: true,
@@ -45,52 +79,68 @@ export const useBeachNotifications = () => {
     }
   }, []);
 
-  // Subscribe to beach status changes (simulated - in production this would be real-time from DB)
+  // Subscribe to beach status notification changes
   useEffect(() => {
     if (!user) return;
 
     // Request permission when user is logged in
     requestNotificationPermission();
 
-    // In a real implementation, you would:
-    // 1. Subscribe to a beaches table with real-time updates
-    // 2. Check if the changed beach is in user's favorites
-    // 3. Send notification if status changed
-    
-    // Example real-time subscription (uncomment when beaches are in DB):
-    // const channel = supabase
-    //   .channel('beach-status-changes')
-    //   .on(
-    //     'postgres_changes',
-    //     { event: 'UPDATE', schema: 'public', table: 'beaches' },
-    //     async (payload) => {
-    //       const { data: likes } = await supabase
-    //         .from('beach_likes')
-    //         .select('beach_id')
-    //         .eq('user_id', user.id)
-    //         .eq('beach_id', payload.new.id);
-    //       
-    //       if (likes && likes.length > 0) {
-    //         sendNotification(
-    //           payload.new.name,
-    //           getStatusLabel(payload.old.status),
-    //           getStatusLabel(payload.new.status)
-    //         );
-    //       }
-    //     }
-    //   )
-    //   .subscribe();
-    // 
-    // return () => {
-    //   supabase.removeChannel(channel);
-    // };
-  }, [user, requestNotificationPermission, sendNotification]);
+    // Subscribe to beach_status_notifications table
+    const channel = supabase
+      .channel('beach-notifications')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'beach_status_notifications' 
+        },
+        async (payload) => {
+          console.log('Status notification received:', payload);
+          
+          const notification = payload.new as {
+            beach_id: string;
+            old_status: string;
+            new_status: string;
+          };
+
+          // Check if user liked this beach
+          if (likedBeachIds.includes(notification.beach_id)) {
+            // Get beach name
+            const { data: beach } = await supabase
+              .from('beaches')
+              .select('name')
+              .eq('id', notification.beach_id)
+              .maybeSingle();
+
+            if (beach) {
+              sendNotification(
+                beach.name,
+                notification.old_status,
+                notification.new_status
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, likedBeachIds, requestNotificationPermission, sendNotification]);
 
   // Function to manually trigger notification (for testing)
-  const simulateStatusChange = useCallback((beachId: string) => {
-    const beach = beaches.find(b => b.id === beachId);
+  const simulateStatusChange = useCallback(async (beachId: string) => {
+    const { data: beach } = await supabase
+      .from('beaches')
+      .select('name')
+      .eq('id', beachId)
+      .maybeSingle();
+      
     if (beach) {
-      sendNotification(beach.name, 'Atenção', 'Própria para banho');
+      sendNotification(beach.name, 'warning', 'safe');
       toast.info(`Notificação de teste enviada para ${beach.name}`);
     }
   }, [sendNotification]);
