@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { BeachCard } from '@/components/beach/BeachCard';
 import { beaches } from '@/data/mockBeaches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBeachNotifications } from '@/hooks/useBeachNotifications';
 import { toast } from 'sonner';
 import {
   User,
@@ -28,6 +29,7 @@ type AuthMode = 'login' | 'signup';
 
 const Profile = () => {
   const { user, loading, signIn, signUp, signOut } = useAuth();
+  const { requestNotificationPermission, notificationsEnabled, simulateStatusChange } = useBeachNotifications();
   const [activeTab, setActiveTab] = useState<TabType>('favorites');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -41,10 +43,20 @@ const Profile = () => {
   const historyBeaches = beaches.slice(0, 4);
 
   const [notifications, setNotifications] = useState({
-    favorites: true,
+    favorites: notificationsEnabled,
     alerts: true,
     weather: false,
   });
+
+  const handleNotificationToggle = async (checked: boolean) => {
+    if (checked) {
+      const granted = await requestNotificationPermission();
+      setNotifications(prev => ({ ...prev, favorites: granted }));
+    } else {
+      setNotifications(prev => ({ ...prev, favorites: false }));
+      toast.info('Notificações desativadas');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,11 +322,25 @@ const Profile = () => {
                 </div>
                 <Switch
                   checked={notifications.favorites}
-                  onCheckedChange={(checked) =>
-                    setNotifications((prev) => ({ ...prev, favorites: checked }))
-                  }
+                  onCheckedChange={handleNotificationToggle}
                 />
               </div>
+              {notifications.favorites && (
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <p className="text-sm text-primary flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Notificações ativas para praias curtidas
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => simulateStatusChange('1')}
+                  >
+                    Testar Notificação
+                  </Button>
+                </div>
+              )}
               <Separator />
               <div className="flex items-center justify-between">
                 <div>
