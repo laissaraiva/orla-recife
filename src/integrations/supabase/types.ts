@@ -35,6 +35,92 @@ export type Database = {
         }
         Relationships: []
       }
+      beach_status_notifications: {
+        Row: {
+          beach_id: string
+          id: string
+          new_status: Database["public"]["Enums"]["beach_status"]
+          notified_at: string
+          old_status: Database["public"]["Enums"]["beach_status"]
+        }
+        Insert: {
+          beach_id: string
+          id?: string
+          new_status: Database["public"]["Enums"]["beach_status"]
+          notified_at?: string
+          old_status: Database["public"]["Enums"]["beach_status"]
+        }
+        Update: {
+          beach_id?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["beach_status"]
+          notified_at?: string
+          old_status?: Database["public"]["Enums"]["beach_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beach_status_notifications_beach_id_fkey"
+            columns: ["beach_id"]
+            isOneToOne: false
+            referencedRelation: "beaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beaches: {
+        Row: {
+          amenities: string[] | null
+          coliform_level: Database["public"]["Enums"]["coliform_level"] | null
+          coordinates_lat: number
+          coordinates_lng: number
+          created_at: string
+          description: string | null
+          id: string
+          last_update: string
+          name: string
+          neighborhood: string
+          shark_risk: Database["public"]["Enums"]["shark_risk"] | null
+          status: Database["public"]["Enums"]["beach_status"]
+          updated_at: string
+          water_temperature: number | null
+          wave_height: number | null
+        }
+        Insert: {
+          amenities?: string[] | null
+          coliform_level?: Database["public"]["Enums"]["coliform_level"] | null
+          coordinates_lat: number
+          coordinates_lng: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_update?: string
+          name: string
+          neighborhood: string
+          shark_risk?: Database["public"]["Enums"]["shark_risk"] | null
+          status?: Database["public"]["Enums"]["beach_status"]
+          updated_at?: string
+          water_temperature?: number | null
+          wave_height?: number | null
+        }
+        Update: {
+          amenities?: string[] | null
+          coliform_level?: Database["public"]["Enums"]["coliform_level"] | null
+          coordinates_lat?: number
+          coordinates_lng?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_update?: string
+          name?: string
+          neighborhood?: string
+          shark_risk?: Database["public"]["Enums"]["shark_risk"] | null
+          status?: Database["public"]["Enums"]["beach_status"]
+          updated_at?: string
+          water_temperature?: number | null
+          wave_height?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -70,7 +156,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      beach_status: "safe" | "warning" | "danger"
+      coliform_level: "normal" | "elevated" | "high"
+      shark_risk: "low" | "medium" | "high"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -197,6 +285,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      beach_status: ["safe", "warning", "danger"],
+      coliform_level: ["normal", "elevated", "high"],
+      shark_risk: ["low", "medium", "high"],
+    },
   },
 } as const
