@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { BeachCard } from '@/components/beach/BeachCard';
-import { beaches } from '@/data/mockBeaches';
+import { useBeaches } from '@/hooks/useBeaches';
+import { useBeachLikes } from '@/hooks/useBeachLikes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBeachNotifications } from '@/hooks/useBeachNotifications';
 import { toast } from 'sonner';
@@ -29,6 +30,8 @@ type AuthMode = 'login' | 'signup';
 
 const Profile = () => {
   const { user, loading, signIn, signUp, signOut } = useAuth();
+  const { beaches } = useBeaches();
+  const { likedBeachIds } = useBeachLikes();
   const { requestNotificationPermission, notificationsEnabled, simulateStatusChange } = useBeachNotifications();
   const [activeTab, setActiveTab] = useState<TabType>('favorites');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -37,9 +40,8 @@ const Profile = () => {
   const [displayName, setDisplayName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock data
-  const favoriteIds = ['1', '3', '5'];
-  const favoriteBeaches = beaches.filter((b) => favoriteIds.includes(b.id));
+  // Get user's liked beaches from database
+  const favoriteBeaches = beaches.filter((b) => likedBeachIds.includes(b.id));
   const historyBeaches = beaches.slice(0, 4);
 
   const [notifications, setNotifications] = useState({
@@ -297,11 +299,17 @@ const Profile = () => {
         {activeTab === 'favorites' && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">
-              Praias Favoritas ({favoriteBeaches.length})
+              Praias Curtidas ({favoriteBeaches.length})
             </h2>
-            {favoriteBeaches.map((beach) => (
-              <BeachCard key={beach.id} beach={beach} isFavorite />
-            ))}
+            {favoriteBeaches.length > 0 ? (
+              favoriteBeaches.map((beach) => (
+                <BeachCard key={beach.id} beach={beach} isFavorite />
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Você ainda não curtiu nenhuma praia. Explore o mapa e curta suas praias favoritas!
+              </p>
+            )}
           </div>
         )}
 

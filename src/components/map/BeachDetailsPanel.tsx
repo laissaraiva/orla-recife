@@ -1,4 +1,4 @@
-import { Beach, getStatusLabel, getStatusColor, getSharkRiskLabel, getSharkRiskColor } from '@/data/mockBeaches';
+import { Beach, getStatusLabel, getStatusColor, getSharkRiskLabel, getSharkRiskColor } from '@/hooks/useBeaches';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Waves, Thermometer, AlertTriangle, X } from 'lucide-react';

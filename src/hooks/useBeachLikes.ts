@@ -97,5 +97,9 @@ export const useBeachLikes = () => {
     return likesData[beachId] || { count: 0, userLiked: false };
   };
 
-  return { getLikeData, toggleLike, loading, refetch: fetchLikes };
+  const likedBeachIds = Object.keys(likesData).filter(
+    (beachId) => likesData[beachId].userLiked
+  );
+
+  return { getLikeData, toggleLike, loading, refetch: fetchLikes, likedBeachIds };
 };

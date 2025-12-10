@@ -3,16 +3,19 @@ import { BeachStatusSummary } from '@/components/beach/BeachStatusSummary';
 import { WeatherAlert } from '@/components/weather/WeatherAlert';
 import { NewsCard } from '@/components/news/NewsCard';
 import { BeachCard } from '@/components/beach/BeachCard';
-import { beaches, news } from '@/data/mockBeaches';
+import { news } from '@/data/mockBeaches';
+import { useBeaches } from '@/hooks/useBeaches';
+import { useBeachLikes } from '@/hooks/useBeachLikes';
 import { useNavigate } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star, Loader2 } from 'lucide-react';
 
 const Home = () => {
   const navigate = useNavigate();
-
-  // Mock favorite beaches (IDs)
-  const favoriteIds = ['1', '3'];
-  const favoriteBeaches = beaches.filter((b) => favoriteIds.includes(b.id));
+  const { beaches, loading } = useBeaches();
+  const { likedBeachIds } = useBeachLikes();
+  
+  // Get user's liked beaches
+  const favoriteBeaches = beaches.filter((b) => likedBeachIds.includes(b.id));
 
   return (
     <AppLayout>
