@@ -121,6 +121,39 @@ export type Database = {
         }
         Relationships: []
       }
+      news: {
+        Row: {
+          category: Database["public"]["Enums"]["news_category"]
+          created_at: string
+          id: string
+          image_url: string | null
+          published_at: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["news_category"]
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          published_at?: string
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["news_category"]
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          published_at?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -158,6 +191,7 @@ export type Database = {
     Enums: {
       beach_status: "safe" | "warning" | "danger"
       coliform_level: "normal" | "elevated" | "high"
+      news_category: "alert" | "news" | "weather"
       shark_risk: "low" | "medium" | "high"
     }
     CompositeTypes: {
@@ -288,6 +322,7 @@ export const Constants = {
     Enums: {
       beach_status: ["safe", "warning", "danger"],
       coliform_level: ["normal", "elevated", "high"],
+      news_category: ["alert", "news", "weather"],
       shark_risk: ["low", "medium", "high"],
     },
   },
