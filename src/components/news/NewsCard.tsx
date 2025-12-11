@@ -1,7 +1,7 @@
 import { Cloud, Newspaper, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { NewsItem } from '@/data/mockBeaches';
+import { NewsItem } from '@/hooks/useNews';
 import { cn } from '@/lib/utils';
 
 interface NewsCardProps {
@@ -64,7 +64,7 @@ export const NewsCard = ({ news }: NewsCardProps) => {
                 {categoryLabel}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {new Date(news.date).toLocaleDateString('pt-BR')}
+                {new Date(news.publishedAt).toLocaleDateString('pt-BR')}
               </span>
             </div>
             <h3 className="font-semibold text-foreground line-clamp-2 mb-1">

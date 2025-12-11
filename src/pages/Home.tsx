@@ -3,16 +3,17 @@ import { BeachStatusSummary } from '@/components/beach/BeachStatusSummary';
 import { WeatherAlert } from '@/components/weather/WeatherAlert';
 import { NewsCard } from '@/components/news/NewsCard';
 import { BeachCard } from '@/components/beach/BeachCard';
-import { news } from '@/data/mockBeaches';
 import { useBeaches } from '@/hooks/useBeaches';
 import { useBeachLikes } from '@/hooks/useBeachLikes';
+import { useNews } from '@/hooks/useNews';
 import { useNavigate } from 'react-router-dom';
 import { Star, Loader2 } from 'lucide-react';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { beaches, loading } = useBeaches();
+  const { beaches } = useBeaches();
   const { likedBeachIds } = useBeachLikes();
+  const { news, loading: newsLoading } = useNews();
   
   // Get user's liked beaches
   const favoriteBeaches = beaches.filter((b) => likedBeachIds.includes(b.id));
@@ -60,9 +61,17 @@ const Home = () => {
             Notícias e Alertas
           </h2>
           <div className="space-y-3">
-            {news.map((item) => (
-              <NewsCard key={item.id} news={item} />
-            ))}
+            {newsLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : news.length > 0 ? (
+              news.map((item) => (
+                <NewsCard key={item.id} news={item} />
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm">Nenhuma notícia disponível.</p>
+            )}
           </div>
         </section>
       </div>
