@@ -3,7 +3,9 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { lifeguardPosts } from '@/data/mockBeaches';
-import { useBeaches, Beach, getStatusColor } from '@/hooks/useBeaches';
+import { useBeaches, getStatusColor } from '@/hooks/useBeaches';
+import { useBeachGeocoding } from '@/hooks/useBeachGeocoding';
+import { UnifiedBeach } from '@/types/beach';
 import { Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,18 +26,19 @@ const MapView = () => {
   const lifeguardMarkers = useRef<mapboxgl.Marker[]>([]);
 
   const { beaches, loading: beachesLoading } = useBeaches();
+  const { searchBeaches, searchResults, isSearching, clearResults } = useBeachGeocoding({ supabaseBeaches: beaches });
   
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const [selectedBeach, setSelectedBeach] = useState<Beach | null>(null);
+  const [selectedBeach, setSelectedBeach] = useState<UnifiedBeach | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   
   const { getLikeData, toggleLike } = useBeachLikes();
 
-  const getStatusMarkerColor = (status: Beach['status']) => {
+  const getStatusMarkerColor = (status?: UnifiedBeach['status']) => {
     switch (status) {
       case 'safe':
         return '#22c55e';
@@ -43,6 +46,8 @@ const MapView = () => {
         return '#eab308';
       case 'danger':
         return '#ef4444';
+      default:
+        return '#22c55e'; // Default to safe for unknown beaches
     }
   };
 
@@ -209,7 +214,24 @@ const MapView = () => {
         el.querySelector('div')!.style.transform = 'scale(1)';
       });
       el.addEventListener('click', () => {
-        setSelectedBeach(beach);
+        // Convert Beach to UnifiedBeach
+        const unifiedBeach: UnifiedBeach = {
+          id: `supabase-${beach.id}`,
+          name: beach.name,
+          neighborhood: beach.neighborhood,
+          coordinates: beach.coordinates,
+          status: beach.status,
+          waveHeight: beach.waveHeight,
+          sharkRisk: beach.sharkRisk,
+          waterTemperature: beach.waterTemperature,
+          coliformLevel: beach.coliformLevel,
+          description: beach.description,
+          amenities: beach.amenities,
+          lastUpdate: beach.lastUpdate,
+          source: 'supabase',
+          supabaseId: beach.id,
+        };
+        setSelectedBeach(unifiedBeach);
         map.current?.flyTo({
           center: [beach.coordinates.lng, beach.coordinates.lat],
           zoom: 14,
@@ -308,8 +330,10 @@ const MapView = () => {
 
           {/* Floating Search Bar */}
           <BeachSearchBar
-            beaches={beaches}
-            onSelectBeach={(beach) => {
+            searchResults={searchResults}
+            isSearching={isSearching}
+            onSearch={searchBeaches}
+            onSelectBeach={(beach: UnifiedBeach) => {
               setSelectedBeach(beach);
               map.current?.flyTo({
                 center: [beach.coordinates.lng, beach.coordinates.lat],
@@ -317,6 +341,7 @@ const MapView = () => {
                 duration: 1500,
               });
             }}
+            onClear={clearResults}
           />
 
           {/* Emergency Button */}
@@ -382,8 +407,8 @@ const MapView = () => {
                   )
                 : undefined
             }
-            likeCount={getLikeData(selectedBeach.id).count}
-            userLiked={getLikeData(selectedBeach.id).userLiked}
+            likeCount={getLikeData(selectedBeach.supabaseId || selectedBeach.id).count}
+            userLiked={getLikeData(selectedBeach.supabaseId || selectedBeach.id).userLiked}
             onToggleLike={toggleLike}
             onClose={() => setSelectedBeach(null)}
           />
@@ -398,7 +423,24 @@ const MapView = () => {
                   key={beach.id}
                   className="shrink-0 w-40"
                   onClick={() => {
-                    setSelectedBeach(beach);
+                    // Convert Beach to UnifiedBeach
+                    const unifiedBeach: UnifiedBeach = {
+                      id: `supabase-${beach.id}`,
+                      name: beach.name,
+                      neighborhood: beach.neighborhood,
+                      coordinates: beach.coordinates,
+                      status: beach.status,
+                      waveHeight: beach.waveHeight,
+                      sharkRisk: beach.sharkRisk,
+                      waterTemperature: beach.waterTemperature,
+                      coliformLevel: beach.coliformLevel,
+                      description: beach.description,
+                      amenities: beach.amenities,
+                      lastUpdate: beach.lastUpdate,
+                      source: 'supabase',
+                      supabaseId: beach.id,
+                    };
+                    setSelectedBeach(unifiedBeach);
                     map.current?.flyTo({
                       center: [beach.coordinates.lng, beach.coordinates.lat],
                       zoom: 14,
