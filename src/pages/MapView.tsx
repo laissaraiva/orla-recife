@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { EmergencyButton } from '@/components/map/EmergencyButton';
 import { BeachDetailsPanel } from '@/components/map/BeachDetailsPanel';
+import { BeachSearchBar } from '@/components/map/BeachSearchBar';
 import { useBeachLikes } from '@/hooks/useBeachLikes';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoicGhzcDIiLCJhIjoiY21pdnpydWloMXVuaDNkcTJoMTBiaXNjdSJ9.VgPr50l5WyLY7zE-_-NlLg';
@@ -305,8 +306,21 @@ const MapView = () => {
         <div className="relative flex-1">
           <div ref={mapContainer} className="absolute inset-0" />
 
+          {/* Floating Search Bar */}
+          <BeachSearchBar
+            beaches={beaches}
+            onSelectBeach={(beach) => {
+              setSelectedBeach(beach);
+              map.current?.flyTo({
+                center: [beach.coordinates.lng, beach.coordinates.lat],
+                zoom: 15,
+                duration: 1500,
+              });
+            }}
+          />
+
           {/* Emergency Button */}
-          <div className="absolute top-4 right-16 z-10">
+          <div className="absolute top-16 right-16 z-10">
             <EmergencyButton />
           </div>
 
