@@ -4,8 +4,8 @@ import { Beach } from '@/hooks/useBeaches';
 
 const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoicGhzcDIiLCJhIjoiY21pdnpydWloMXVuaDNkcTJoMTBiaXNjdSJ9.VgPr50l5WyLY7zE-_-NlLg';
 
-// Recife bounding box for focused search
-const RECIFE_BBOX = '-35.05,-8.2,-34.8,-7.9';
+// Recife/Pernambuco proximity for focused search (wider area)
+const RECIFE_PROXIMITY = '-34.88,-8.05';
 
 interface UseBeachGeocodingOptions {
   supabaseBeaches: Beach[];
@@ -168,8 +168,12 @@ export const useBeachGeocoding = ({ supabaseBeaches }: UseBeachGeocodingOptions)
       }));
 
       // Then, search Mapbox for additional beaches
-      const searchQuery = encodeURIComponent(`praia ${query}`);
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${searchQuery}.json?access_token=${MAPBOX_ACCESS_TOKEN}&bbox=${RECIFE_BBOX}&types=poi&limit=5&language=pt`;
+      // Don't add "praia" prefix if query already contains it
+      const normalizedQuery = query.toLowerCase().includes('praia') ? query : `praia ${query}`;
+      const searchQuery = encodeURIComponent(normalizedQuery);
+      
+      // Use proximity instead of bbox for better results, and allow more types
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${searchQuery}.json?access_token=${MAPBOX_ACCESS_TOKEN}&proximity=${RECIFE_PROXIMITY}&country=BR&limit=10&language=pt`;
 
       const response = await fetch(url);
       
@@ -179,12 +183,16 @@ export const useBeachGeocoding = ({ supabaseBeaches }: UseBeachGeocodingOptions)
 
       const data: MapboxGeocodingResponse = await response.json();
 
-      // Filter for beach-related POIs and convert to UnifiedBeach
+      // Filter for beach-related results and convert to UnifiedBeach
       const mapboxResults = data.features
         .filter(feature => {
           const name = feature.text.toLowerCase();
           const placeName = feature.place_name.toLowerCase();
-          return name.includes('praia') || placeName.includes('praia') || placeName.includes('beach');
+          // Accept any result that mentions praia/beach or is in the search area
+          return name.includes('praia') || 
+                 placeName.includes('praia') || 
+                 placeName.includes('beach') ||
+                 name.includes(query.toLowerCase());
         })
         .map(mapboxToUnified);
 
