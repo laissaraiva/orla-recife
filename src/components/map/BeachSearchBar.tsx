@@ -70,25 +70,16 @@ export const BeachSearchBar = ({
     };
   }, []);
 
-  const getSourceIcon = (source: UnifiedBeach['source']) => {
-    switch (source) {
-      case 'supabase':
-      case 'enriched':
-        return <Database className="w-3 h-3 text-primary" />;
-      case 'mapbox':
-        return <MapPin className="w-3 h-3 text-muted-foreground" />;
-    }
+  const getSourceIcon = () => {
+    return <Database className="w-3 h-3 text-primary" />;
   };
 
-  const getSourceBadge = (source: UnifiedBeach['source']) => {
-    if (source === 'supabase' || source === 'enriched') {
-      return (
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary">
-          Dados CPRH
-        </Badge>
-      );
-    }
-    return null;
+  const getSourceBadge = () => {
+    return (
+      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary">
+        Dados CPRH
+      </Badge>
+    );
   };
 
   const getStatusColor = (status?: UnifiedBeach['status']) => {
@@ -154,7 +145,7 @@ export const BeachSearchBar = ({
                           <p className="text-sm font-medium text-foreground truncate">
                             {beach.name}
                           </p>
-                          {getSourceBadge(beach.source)}
+                          {getSourceBadge()}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {beach.address || beach.neighborhood}
@@ -163,7 +154,7 @@ export const BeachSearchBar = ({
 
                       {/* Source icon */}
                       <div className="shrink-0 mt-1">
-                        {getSourceIcon(beach.source)}
+                        {getSourceIcon()}
                       </div>
                     </div>
                   </li>
